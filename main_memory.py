@@ -1,5 +1,5 @@
 class Memory:
-    memory = bytearray(0xFFFF)
+    memory = bytearray(0x10000)
 
     def __init__(self):
         for i in range(len(self.memory)):

@@ -5,13 +5,19 @@ class CPU:
     accumulator = 0x00
     x = 0x00
     y = 0x00
-    stack_pointer = 0x01FF
+    stack_pointer = 0x01FD
     program_counter = 0xC000
-    processor_status = 0b000000
     cycle_count = 0
+    carry_flag = 0
+    zero_flag = 0
+    interrup_disable = 0
+    decimal_mode_flag = 0
+    break_command = 0
+    overflow_flag = 0
+    negative_flag = 0
 
     def BRK(self):
-        self.program_counter = ((Memory.memory[0XFFFF] << 8) | Memory.memory[0XFFFE])
+        self.program_counter = ((Memory.memory[0XFFFE] << 8) | Memory.memory[0XFFFF])
         self.cycle_count += 7
 
     def ORAdx(self):
@@ -62,7 +68,12 @@ class CPU:
         pass
 
     def BPLd(self):
-        pass
+        if self.negative_flag == 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
 
     def ORAdy(self):
         pass
@@ -81,7 +92,9 @@ class CPU:
         pass
 
     def CLC(self):
-        pass
+        self.carry_flag = 0
+        self.program_counter += 1
+        self.cycle_count += 6
 
     def ORAay(self):
         pass
@@ -104,7 +117,8 @@ class CPU:
 
     def JSRa(self):
         Memory.memory[self.stack_pointer] = self.program_counter>>8
-        Memory.memory
+        Memory.memory[self.stack_pointer + 1] = int(str(self.program_counter)[3:],16)
+        self.stack_pointer -= 2
         self.program_counter = ((Memory.memory[self.program_counter + 2] << 8) | Memory.memory[self.program_counter + 1])
         self.cycle_count += 18
 
@@ -115,7 +129,11 @@ class CPU:
         pass
 
     def BITd(self):
-        pass
+        self.overflow_flag = (Memory.memory[Memory.memory[self.program_counter + 1]] and self.accumulator) and 0b00000010
+        self.negative_flag = (Memory.memory[Memory.memory[self.program_counter + 1]] and self.accumulator) and 0b00000001
+        self.program_counter += 2
+        self.cycle_count += 9
+
 
     def ANDd(self):
         pass
@@ -160,7 +178,9 @@ class CPU:
         pass
 
     def SEC(self):
-        pass
+        self.carry_flag = 1
+        self.program_counter += 1
+        self.cycle_count += 6
 
     def ANDay(self):
         pass
@@ -228,7 +248,13 @@ class CPU:
         pass
 
     def BVCd(self):
-        pass
+        if self.overflow_flag == 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
+
 
     def EORdy(self):
         pass
@@ -255,7 +281,7 @@ class CPU:
         pass
 
     def RTS(self):
-        pass
+        self.program_counter = Memory.memory[self.stack_pointer + 1]<<8 or Memory.memory[self.stack_pointer]
 
     def ADCdx(self):
         pass
@@ -297,7 +323,12 @@ class CPU:
         pass
 
     def BVSd(self):
-        pass
+        if int(self.overflow_flag) != 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
 
     def ADCdy(self):
         pass
@@ -340,7 +371,10 @@ class CPU:
         pass
 
     def STAd(self):
-        pass
+        Memory.memory[Memory.memory[self.program_counter + 1]] = self.accumulator
+        self.program_counter += 2
+        self.cycle_count += 9
+
 
     def STXd(self):
         Memory.memory[self.program_counter+1] = self.x
@@ -372,7 +406,12 @@ class CPU:
         pass
 
     def BCCd(self):
-        pass
+        if self.carry_flag == 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
 
     def STAdy(self):
         pass
@@ -423,6 +462,7 @@ class CPU:
         self.x = Memory.memory[self.program_counter +1]
         self.program_counter += 2
         self.cycle_count += 6
+        self.zero_flag = self.x
 
     def LAXdx(self):
         pass
@@ -443,7 +483,11 @@ class CPU:
         pass
 
     def LDAi(self):
-        pass
+        self.accumulator = Memory.memory[self.program_counter+1]
+        self.program_counter += 2
+        self.cycle_count += 6
+        self.zero_flag = self.accumulator
+        self.negative_flag = self.accumulator and 0b0100000
 
     def TAX(self):
         pass
@@ -464,7 +508,13 @@ class CPU:
         pass
 
     def BCSd(self):
-        pass
+        if self.carry_flag != 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
+        
 
     def LDAdy(self):
         pass
@@ -548,7 +598,12 @@ class CPU:
         pass
 
     def BNEd(self):
-        pass
+        if self.zero_flag == 0:
+            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter +=2
+            self.cycle_count += 6
 
     def CMPdy(self):
         pass
@@ -617,7 +672,12 @@ class CPU:
         pass
 
     def BEQd(self):
-        pass
+        if self.zero_flag != 0:
+            self.program_counter += (Memory.memory[self.program_counter + 1] + 2)
+            self.cycle_count += 9
+        else:
+            self.program_counter += 2
+            self.cycle_count += 6
 
     def SBCdy(self):
         pass
