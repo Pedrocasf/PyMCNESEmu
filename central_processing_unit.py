@@ -1,4 +1,5 @@
 from main_memory import Memory
+import logging
 
 
 class CPU:
@@ -11,7 +12,7 @@ class CPU:
     processor_status = 0b00000000
 
     def BRK(self):
-        self.program_counter = ((Memory.memory[0XFFFE] << 8) | Memory.memory[0XFFFF])
+        self.program_counter = ((Memory.memory[0XFFFF] << 8) | Memory.memory[0XFFFE])
         self.processor_status = self.processor_status | 0b00110100
         self.cycle_count += 7
 
@@ -588,19 +589,26 @@ class CPU:
         pass
 
     def INY(self):
-        pass
+        self.y += 1
+        if self.y == 0:
+            self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | (self.y and 0b10000000)
+        self.program_counter += 1
 
     def CMPi(self):
         if self.accumulator >= Memory.memory[self.program_counter + 1]:
-            self.processor_status = self.processor_status or 0b00000001
+            self.processor_status = self.processor_status | 0b00000001
         if self.accumulator == Memory.memory[self.program_counter+1]:
-            self.processor_status = self.processor_status or 0b00000010
+            self.processor_status = self.processor_status | 0b00000010
         self.processor_status = self.processor_status or ((self.accumulator - Memory.memory[self.Memory.memory[self.program_counter + 1]])or 0b10000000)
         self.program_counter += 2
 
     def DEX(self):
-        pass
-
+        self.x -= 1
+        if self.x == 0:
+            self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | (self.x and 0b10000000)
+        self.program_counter +=1
     def AXSi(self):
         pass
 
@@ -695,7 +703,6 @@ class CPU:
         if self.processor_status and 0b00000010 == 0b10:
             self.program_counter += (Memory.memory[self.program_counter + 1] + 2)
             self.cycle_count += 9
-            print (bin( self.processor_status and 0b00000010))
         else:
             self.program_counter += 2
             self.cycle_count += 6

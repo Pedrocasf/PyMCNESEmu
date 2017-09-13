@@ -9,10 +9,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def initialize():
-    with open("nestest.nes", mode="rb") as f:
+    with open(sys.argv[1], mode="rb") as f:
         data = f.read()
-        memory_banks = data[4] * 0x3FFF
+        memory_banks = data[4] * 0x4000
     mem.load_data(data, 0xC000, memory_banks)
+
 
 initialize()
 cpu = CPU()
@@ -27,6 +28,6 @@ def cycle():
                   " Processor Status:%s" %bin(cpu.processor_status))
     cpu.opcode_table[mem.memory[cpu.program_counter]]()
 
-
+logging.debug(cpu.opcode_table[mem.memory[0xC5F4]])
 for i in range(0, 8992):
     cycle()
