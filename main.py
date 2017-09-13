@@ -21,8 +21,10 @@ cpu = CPU()
 def cycle():
     if cpu.cycle_count >= 340:
         cpu.cycle_count = 1
-    logging.debug("Program Counter: %s" %hex(cpu.program_counter) + " Operation:%s" % cpu.opcode_table[mem.memory[cpu.program_counter]].__name__ + " A:%s" % cpu.accumulator
-            + " X:%s" % cpu.x + " Y:%s" % cpu.y + " SP:%s" % cpu.stack_pointer + " CYC:%s" % cpu.cycle_count + " Processor Status:%s" %cpu.processor_status)
+    logging.debug("Program Counter: %s" %hex(cpu.program_counter) + " Operation:%s" %
+                  cpu.opcode_table[mem.memory[cpu.program_counter]].__name__ + " A:%s" % cpu.accumulator
+            + " X:%s" % cpu.x + " Y:%s" % cpu.y + " SP:%s" % cpu.stack_pointer + " CYC:%s" % cpu.cycle_count +
+                  " Processor Status:%s" %bin(cpu.processor_status))
     cpu.opcode_table[mem.memory[cpu.program_counter]]()
 
 

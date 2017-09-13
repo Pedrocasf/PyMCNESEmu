@@ -8,3 +8,6 @@ class Memory:
     def load_data(self, data, offset, banks):
         for i in range(0, banks):
             self.memory[i + offset] = data[i + 0x10]
+
+    def write_to_address(self, data, address ):
+        self.memory[address] = data
