@@ -28,6 +28,6 @@ def cycle():
                   " Processor Status:%s" %bin(cpu.processor_status))
     cpu.opcode_table[mem.memory[cpu.program_counter]]()
 
-logging.debug(cpu.opcode_table[mem.memory[0xC5F4]])
 for i in range(0, 8992):
     cycle()
+print(mem.memory[0x2])

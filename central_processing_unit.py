@@ -11,6 +11,29 @@ class CPU:
     cycle_count = 0
     processor_status = 0b00000000
 
+    def A_zero_negative(self):
+        if self.accumulator == 0:
+            self.processor_status = self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | (self.accumulator & 0b10000000)
+
+    def Y_zero_negative(self):
+        if self.y == 0:
+            self.processor_status = self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | (self.y & 0b10000000)
+
+    def X_zero_negative(self):
+        if self.x == 0:
+            self.processor_status = self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | (self.x & 0b10000000)
+
+    def branch(self):
+        self.program_counter += (Memory.memory[self.program_counter + 1] + 2)
+        self.cycle_count += 9
+
+    def not_branch(self):
+        self.program_counter += 2
+        self.cycle_count += 6
+
     def BRK(self):
         self.program_counter = ((Memory.memory[0XFFFF] << 8) | Memory.memory[0XFFFE])
         self.processor_status = self.processor_status | 0b00110100
@@ -43,7 +66,9 @@ class CPU:
         self.program_counter +=1
 
     def ORAi(self):
-        pass
+        self.accumulator = self.accumulator | Memory.memory[self.program_counter + 1]
+        self.A_zero_negative()
+        self.program_counter += 2
 
     def ASL(self):
         pass
@@ -65,12 +90,10 @@ class CPU:
         pass
 
     def BPLd(self):
-        if self.processor_status and 0b100000000 == 0b10000000:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b100000000 == 0b10000000:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
 
     def ORAdy(self):
         pass
@@ -89,7 +112,7 @@ class CPU:
         pass
 
     def CLC(self):
-        self.processor_status = self.processor_status and 0b11111110
+        self.processor_status = self.processor_status & 0b11111110
         self.program_counter += 1
         self.cycle_count += 6
 
@@ -113,8 +136,8 @@ class CPU:
         pass
 
     def JSRa(self):
-        Memory.memory[self.stack_pointer] = self.program_counter>>8
-        Memory.memory[self.stack_pointer - 1] = self.program_counter and 0x00FF
+        Memory.memory[self.stack_pointer] = (self.program_counter & 0xFF00) >> 8
+        Memory.memory[self.stack_pointer - 1] = (self.program_counter & 0x00FF) + 1
         self.stack_pointer -= 2
         self.program_counter = ((Memory.memory[self.program_counter + 2] << 8) | Memory.memory[self.program_counter + 1])
         self.cycle_count += 18
@@ -126,10 +149,10 @@ class CPU:
         pass
 
     def BITd(self):
-        self.processor_status = self.processor_status or (bin((Memory.memory[Memory.memory[self.program_counter + 1]] and self.accumulator)) and 0b00000010)
+        self.processor_status = self.processor_status | (int(Memory.memory[Memory.memory[self.program_counter + 1]]) &
+                                                         self.accumulator) & 0b00000010
         self.program_counter += 2
         self.cycle_count += 9
-
 
     def ANDd(self):
         pass
@@ -145,9 +168,8 @@ class CPU:
         self.program_counter += 1
 
     def ANDi(self):
-        self.accumulator = self.accumulator and Memory.memory[self.program_counter + 1]
-        if self.accumulator == 0:
-            self.processor_status = self.processor_status | 0b00000010
+        self.accumulator = self.accumulator & Memory.memory[self.program_counter + 1]
+        self.A_zero_negative()
         self.program_counter += 2
 
     def ROL(self):
@@ -157,7 +179,8 @@ class CPU:
         pass
 
     def ANDa(self):
-        pass
+        self.accumulator = self.accumulator & Memory.memory[self.program_counter + 1]
+        self.program_counter += 2
 
     def ROLa(self):
         pass
@@ -166,9 +189,8 @@ class CPU:
         pass
 
     def BMId(self):
-        if self.processor_status and 0b10000000 != 0:
-            self.program_counter += (Memory.memory[self.program_counter + 1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b10000000 != 0:
+            self.branch()
         else:
             self.program_counter += 2
             self.cycle_count += 6
@@ -183,7 +205,7 @@ class CPU:
         pass
 
     def SEC(self):
-        self.processor_status = self.processor_status or 0b00000001
+        self.processor_status = self.processor_status | 0b00000001
         self.program_counter += 1
         self.cycle_count += 6
 
@@ -203,7 +225,7 @@ class CPU:
         pass
 
     def RTI(self):
-        pass
+        self.program_counter += 1
 
     def EORdx(self):
         pass
@@ -232,7 +254,10 @@ class CPU:
         pass
 
     def EORi(self):
-        pass
+        self.accumulator = self.accumulator ^ Memory.memory[self.program_counter + 1]
+        self.A_zero_negative()
+        self.program_counter += 2
+
 
     def LSR(self):
         pass
@@ -254,12 +279,10 @@ class CPU:
         pass
 
     def BVCd(self):
-        if self.processor_status and 0b01000000 == 0:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b01000000 == 0:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
 
 
     def EORdy(self):
@@ -288,7 +311,7 @@ class CPU:
 
     def RTS(self):
         self.stack_pointer += 2
-        self.program_counter = (Memory.memory[self.stack_pointer]<<8 | Memory.memory[self.stack_pointer-1]) + 1
+        self.program_counter = (Memory.memory[self.stack_pointer]<<8 | Memory.memory[self.stack_pointer-1]) + 2
 
     def ADCdx(self):
         pass
@@ -307,12 +330,17 @@ class CPU:
 
     def PLA(self):
         self.accumulator = Memory.memory[self.stack_pointer]
-        self.processor_status = self.processor_status | (self.accumulator and 0b00000010)
-        self.processor_status = self.processor_status | (self.accumulator and 0b10000000)
+        self.processor_status = self.processor_status | (self.accumulator & 0b00000010)
+        self.processor_status = self.processor_status | (self.accumulator & 0b10000000)
         self.program_counter += 1
 
     def ADCi(self):
-        pass
+        self.accumulator += Memory.memory[self.program_counter + 1]
+        if self.accumulator >= 0xFF:
+            self.accumulator = self.accumulator >> 1
+            self.processor_status = self.processor_status | 0b00000001
+        self.A_zero_negative()
+        self.program_counter += 2
 
     def ROR(self):
         pass
@@ -333,12 +361,10 @@ class CPU:
         pass
 
     def BVSd(self):
-        if self.processor_status and 0b01000000 != 0:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b01000000 != 0:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
 
     def ADCdy(self):
         pass
@@ -350,7 +376,7 @@ class CPU:
         pass
 
     def SEI(self):
-        self.processor_status = self.processor_status or 0b000001000
+        self.processor_status = self.processor_status | 0b000001000
         self.program_counter += 1
 
     def ADCay(self):
@@ -417,12 +443,10 @@ class CPU:
         pass
 
     def BCCd(self):
-        if self.processor_status and 0b00000001 == 0:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b00000001 == 0:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
 
     def STAdy(self):
         pass
@@ -464,19 +488,18 @@ class CPU:
         pass
 
     def LDYi(self):
-        pass
+        self.y = Memory.memory[self.program_counter+1]
+        self.Y_zero_negative()
+        self.program_counter += 2
 
     def LDAdx(self):
         pass
 
     def LDXi(self):
         self.x = Memory.memory[self.program_counter +1]
-        if self.x == 0:
-            self.processor_status = self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | (self.x and 0b10000000)
+        self.X_zero_negative()
         self.program_counter += 2
         self.cycle_count += 6
-        self = self.x
 
     def LAXdx(self):
         pass
@@ -498,11 +521,10 @@ class CPU:
 
     def LDAi(self):
         self.accumulator = Memory.memory[self.program_counter+1]
+        self.A_zero_negative()
         self.program_counter += 2
         self.cycle_count += 6
-        if self.accumulator == 0:
-            self.processor_status = self.processor_status or 0b0000010
-        self.processor_status = self.accumulator and 0b1000000
+
 
     def TAX(self):
         pass
@@ -523,12 +545,10 @@ class CPU:
         pass
 
     def BCSd(self):
-        if self.processor_status and 0b00000001 != 0:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b1 != 0:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
         
 
     def LDAdy(self):
@@ -544,7 +564,8 @@ class CPU:
         pass
 
     def CLV(self):
-        pass
+        self.processor_status = self.processor_status and 0b10111111
+        self.program_counter += 1
 
     def LDAay(self):
         pass
@@ -568,7 +589,12 @@ class CPU:
         pass
 
     def CPYi(self):
-        pass
+        if self.y >= Memory.memory[self.program_counter + 1]:
+            self.processor_status = self.processor_status | 0b00000001
+        if self.y == Memory.memory[self.program_counter+1]:
+            self.processor_status = self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | ((self.y - Memory.memory[Memory.memory[self.program_counter + 1]]) | 0b10000000)
+        self.program_counter += 2
 
     def CMPdx(self):
         pass
@@ -590,9 +616,7 @@ class CPU:
 
     def INY(self):
         self.y += 1
-        if self.y == 0:
-            self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | (self.y and 0b10000000)
+        self.Y_zero_negative()
         self.program_counter += 1
 
     def CMPi(self):
@@ -600,15 +624,14 @@ class CPU:
             self.processor_status = self.processor_status | 0b00000001
         if self.accumulator == Memory.memory[self.program_counter+1]:
             self.processor_status = self.processor_status | 0b00000010
-        self.processor_status = self.processor_status or ((self.accumulator - Memory.memory[self.Memory.memory[self.program_counter + 1]])or 0b10000000)
+        self.processor_status = self.processor_status | ((self.accumulator - Memory.memory[Memory.memory[self.program_counter + 1]]) | 0b10000000)
         self.program_counter += 2
 
     def DEX(self):
         self.x -= 1
-        if self.x == 0:
-            self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | (self.x and 0b10000000)
+        self. X_zero_negative()
         self.program_counter +=1
+
     def AXSi(self):
         pass
 
@@ -625,12 +648,10 @@ class CPU:
         pass
 
     def BNEd(self):
-        if self.processor_status and 0b00000010 == 0:
-            self.program_counter += (Memory.memory[self.program_counter+1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b00000010 != 0:
+            self.branch()
         else:
-            self.program_counter +=2
-            self.cycle_count += 6
+            self.not_branch()
 
     def CMPdy(self):
         pass
@@ -642,7 +663,7 @@ class CPU:
         pass
 
     def CLD(self):
-        self.processor_status = self.processor_status and 0b11000111
+        self.processor_status = self.processor_status & 0b11000111
         self.program_counter += 2
 
     def CMPay(self):
@@ -661,7 +682,12 @@ class CPU:
         pass
 
     def CPXi(self):
-        pass
+        if self.x >= Memory.memory[self.program_counter + 1]:
+            self.processor_status = self.processor_status | 0b00000001
+        if self.x == Memory.memory[self.program_counter+1]:
+            self.processor_status = self.processor_status | 0b00000010
+        self.processor_status = self.processor_status | ((self.x - Memory.memory[Memory.memory[self.program_counter + 1]]) | 0b10000000)
+        self.program_counter += 2
 
     def SBCdx(self):
         pass
@@ -700,9 +726,8 @@ class CPU:
         pass
 
     def BEQd(self):
-        if self.processor_status and 0b00000010 == 0b10:
-            self.program_counter += (Memory.memory[self.program_counter + 1] + 2)
-            self.cycle_count += 9
+        if self.processor_status & 0b00000010 == 0b10:
+            self.branch()
         else:
             self.program_counter += 2
             self.cycle_count += 6
@@ -717,7 +742,7 @@ class CPU:
         pass
 
     def SED(self):
-        self.processor_status = self.processor_status or 0b00001000
+        self.processor_status = self.processor_status | 0b00001000
         self.program_counter += 1
 
     def SBCay(self):
