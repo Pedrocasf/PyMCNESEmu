@@ -6,7 +6,7 @@ class CPU:
     accumulator = 0x00
     x = 0x00
     y = 0x00
-    stack_pointer = 0x01FD
+    stack_pointer = 0x01FF
     program_counter = 0xC000
     cycle_count = 0
     processor_status = 0b00000000
@@ -158,7 +158,11 @@ class CPU:
         pass
 
     def ASLax(self):
-        pass
+        address = (Memory.memory[self.program_counter + 2] <<8 | Memory.memory[self.program_counter + 1]) + self.x
+        self.processor_status = self.processor_status | (address & 0b10000000)
+        self.accumulator = address << 1
+        self.A_zero_negative()
+        self.program_counter += 3
 
     def SLOax(self):
         pass
@@ -202,7 +206,7 @@ class CPU:
 
     def ROL(self):
         self.processor_status = self.processor_status | (self.accumulator & 0b10000000)
-        self.accumulator = (self.accumulator << 1) & 0b011111111
+        self.accumulator = (self.accumulator << 1) & (self.processor_status & 0b00000001)
         self.A_zero_negative()
         self.program_counter += 2
 
@@ -385,9 +389,10 @@ class CPU:
 
     def ROR(self):
         self.processor_status = self.processor_status | (self.accumulator & 0b10000000)
+        self.accumulator = self.accumulator & ((self.processor_status & 0b00000001) << 8)
         self.accumulator = self.accumulator >> 1
         self.A_zero_negative()
-        self.program_counter += 2
+        self.program_counter += 1
 
     def ARRi(self):
         pass
@@ -803,11 +808,10 @@ class CPU:
         pass
 
     def BEQd(self):
-        if self.processor_status & 0b00000010 == 0b10:
+        if self.processor_status & 0b00000010 != 0b10:
             self.branch()
         else:
-            self.program_counter += 2
-            self.cycle_count += 6
+            self.not_branch()
 
     def SBCdy(self):
         pass
