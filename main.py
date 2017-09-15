@@ -28,6 +28,7 @@ def cycle():
                   " Processor Status:%s" %bin(cpu.processor_status))
     cpu.opcode_table[mem.memory[cpu.program_counter]]()
 
-for i in range(0, 8992):
+for i in range(0, 8991):
     cycle()
 print(mem.memory[0x2])
+print(mem.memory[0x3])
