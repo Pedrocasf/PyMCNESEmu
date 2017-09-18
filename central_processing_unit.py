@@ -63,7 +63,9 @@ class CPU:
         Memory.memory[address] = register
 
     def indexed_indirect(self):
-        address = (Memory.memory[self.program_counter + 1] + self.x) & 0x0FF
+        lsb = (Memory.memory[self.program_counter] + self.x) & 0x0FF
+        address = Memory.memory[lsb + 1] << 8 | Memory.memory[lsb]
+        logging.debug(address)
         return address
 
     def indirect_indexed(self):
@@ -151,7 +153,8 @@ class CPU:
         self.cycle_count += 6
 
     def ORAidx(self):
-        pass
+        self.accumulator = (self.accumulator | self.indexed_indirect()) & 0x00FF
+        self.program_counter += 2
 
     def ASLdx(self):
         pass
@@ -922,7 +925,7 @@ class CPU:
                              0x0A: self.ASL, 0x0B: self.ANCi, 0x0C: self.NOPa, 0x0D: self.ORAa, 0x0E: self.ASLa,
                              0x0F: self.SLOa,
                              0x10: self.BPLd, 0x11: self.ORAdy, 0x12: self.STP, 0x13: self.SLOdy, 0x14: self.NOPdx,
-                             0x15: self.ORAidx, 0x16: self.ASLdx, 0x17: self.SLOdx, 0x18: self.CLC, 0x19: self.ORAay,
+                             0x15: self.ORAdx, 0x16: self.ASLdx, 0x17: self.SLOdx, 0x18: self.CLC, 0x19: self.ORAay,
                              0x1A: self.NOP, 0x1B: self.SLOay, 0x1C: self.NOPax, 0x1D: self.ORAax, 0x1E: self.ASLax,
                              0x1F: self.SLOax,
                              0x20: self.JSRa, 0x21: self.ANDidx, 0x22: self.STP, 0x23: self.RLAidx, 0x24: self.BITd,
