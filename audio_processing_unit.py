@@ -1,2 +1,3 @@
 class APU:
-    pass
+    def cycle(self):
+        pass

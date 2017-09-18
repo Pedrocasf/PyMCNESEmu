@@ -1,2 +1,3 @@
 class PPU:
-    pass
+    def cycle(self):
+        pass
