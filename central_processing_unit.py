@@ -16,28 +16,39 @@ class CPU:
             self.processor_status = self.processor_status | 0b00000010
         else:
             self.processor_status = self.processor_status & 0b11111101
-        self.processor_status = self.processor_status | (self.accumulator & 0b10000000)
-
+        if (self.accumulator & 0b10000000) == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
     def Y_zero_negative(self):
         if self.y == 0:
             self.processor_status = self.processor_status | 0b00000010
         else:
             self.processor_status = self.processor_status & 0b11111101
-        self.processor_status = self.processor_status | (self.y & 0b10000000)
+        if self.y & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
 
     def X_zero_negative(self):
         if self.x == 0:
             self.processor_status = self.processor_status | 0b00000010
         else:
             self.processor_status = self.processor_status & 0b11111101
-        self.processor_status = self.processor_status | (self.x & 0b10000000)
+        if self.x & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
 
     def M_zero_negative(self):
         if Memory.memory[self.program_counter + 1] == 0:
             self.processor_status = self.processor_status | 0b00000010
         else:
             self.processor_status = self.processor_status & 0b11111101
-        self.processor_status = self.processor_status | (Memory.memory[self.program_counter + 1] & 0b10000000)
+        if Memory.memory[self.program_counter + 1] & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
 
     def branch(self):
         if Memory.memory[self.program_counter + 1] & 0b10000000 != 0:
@@ -104,8 +115,7 @@ class CPU:
         pass
 
     def PHP(self):
-        self.processor_status = self.processor_status | 0b00110100
-        Memory.memory[self.stack_pointer] = self.processor_status
+        Memory.memory[self.stack_pointer] = self.processor_status| 0b00110100
         self.program_counter += 1
 
     def ORAi(self):
@@ -202,10 +212,18 @@ class CPU:
         pass
 
     def BITd(self):
-        self.processor_status = self.processor_status | (Memory.memory[Memory.memory[self.program_counter + 1]] & 0b01000000)
-        self.processor_status = self.processor_status | (Memory.memory[Memory.memory[self.program_counter + 1]] & 0b10000000)
+        if Memory.memory[Memory.memory[self.program_counter + 1]] & 0b01000000 == 0b01000000:
+            self.processor_status = self.processor_status | 0b01000000
+        else:
+            self.processor_status = self.processor_status & 0b10111111
+        if Memory.memory[Memory.memory[self.program_counter + 1]] & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
         if self.accumulator & Memory.memory[Memory.memory[self.program_counter + 1]] == 0:
             self.processor_status = self.processor_status | 0b00000010
+        else:
+            self.processor_status = self.processor_status & 0b11111101
         self.program_counter += 2
         self.cycle_count += 9
 
@@ -447,7 +465,7 @@ class CPU:
         pass
 
     def SEI(self):
-        self.processor_status = self.processor_status | 0b000001000
+        self.processor_status = self.processor_status | 0b00000100
         self.program_counter += 1
 
     def ADCay(self):
@@ -713,12 +731,16 @@ class CPU:
         self.program_counter += 1
 
     def CMPi(self):
-        if self.accumulator >= Memory.memory[self.program_counter + 1]:
+        if self.accumulator > Memory.memory[self.program_counter + 1]:
             self.processor_status = self.processor_status | 0b00000001
         if self.accumulator == Memory.memory[self.program_counter + 1]:
             self.processor_status = self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | (
-        (self.accumulator - Memory.memory[Memory.memory[self.program_counter + 1]]) | 0b10000000)
+        else:
+            self.processor_status = self.processor_status & 0b11111101
+        if (self.accumulator - Memory.memory[Memory.memory[self.program_counter + 1]]) & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
         self.program_counter += 2
 
     def DEX(self):
