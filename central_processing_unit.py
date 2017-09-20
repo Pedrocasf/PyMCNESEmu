@@ -437,11 +437,16 @@ class CPU:
         self.program_counter += 1
 
     def ADCi(self):
-        self.accumulator += Memory.memory[self.program_counter + 1] + (self.processor_status & 0b00000001)
-        if self.accumulator & 0b10000000 == 0b10000000:
-            self.processor_status = self.processor_status | 0b01000001
+        if (self.accumulator + Memory.memory[self.program_counter + 1]) & 0b10000000 == 0b10000000 and self.accumulator & 0b10000000 == 0 and Memory.memory[self.program_counter + 1] & 0b10000000 == 0b00000000:
+            self.processor_status = self.processor_status | 0b01000000
         else:
-            self.processor_status = self.processor_status | 0b01000001
+            self.processor_status = self.processor_status & 0b10111111
+        self.accumulator = self.accumulator + Memory.memory[self.program_counter + 1] + ((self.processor_status & 0b00000001) << 7)
+        if self.accumulator > 0xFF:
+            self.processor_status = self.processor_status | 0b00000001
+        else:
+            self.processor_status = self.processor_status & 0b11111110
+        self.accumulator = self.accumulator & 0x00FF
         self.A_zero_negative()
         self.program_counter += 2
 
