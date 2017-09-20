@@ -66,7 +66,12 @@ class CPU:
             self.processor_status = self.processor_status | 0b00000001
         if register == Memory.memory[address]:
             self.processor_status = self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | ((register - Memory.memory[address]) | 0b10000000)
+        else:
+            self.processor_status = self.processor_status & 0b11111101
+        if (register - Memory.memory[address]) & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
 
     def store(self, register, address):
         if register < 0:
@@ -115,7 +120,8 @@ class CPU:
         pass
 
     def PHP(self):
-        Memory.memory[self.stack_pointer] = self.processor_status| 0b00110100
+        self.stack_pointer -= 1
+        Memory.memory[self.stack_pointer] = self.processor_status | 0b00110000
         self.program_counter += 1
 
     def ORAi(self):
@@ -147,7 +153,7 @@ class CPU:
         pass
 
     def BPLd(self):
-        if self.processor_status & 0b10000000 == 0b000000000:
+        if self.processor_status & 0b10000000 == 0b00000000:
             self.branch()
         else:
             self.not_branch()
@@ -199,8 +205,8 @@ class CPU:
         pass
 
     def JSRa(self):
-        Memory.memory[self.stack_pointer - 1] = (self.program_counter & 0xFF00) >> 8
-        Memory.memory[self.stack_pointer] = (self.program_counter & 0x00FF)
+        Memory.memory[self.stack_pointer] = (self.program_counter & 0xFF00) >> 8
+        Memory.memory[self.stack_pointer - 1] = (self.program_counter & 0x00FF)
         self.stack_pointer -= 2
         self.program_counter = self.absolute()
         self.cycle_count += 18
@@ -237,7 +243,7 @@ class CPU:
         pass
 
     def PLP(self):
-        self.processor_status = Memory.memory[self.stack_pointer]
+        self.processor_status = (Memory.memory[self.stack_pointer] & 0b11101111) | 0b00100000
         self.stack_pointer += 1
         self.program_counter += 1
 
@@ -253,10 +259,21 @@ class CPU:
         self.program_counter += 2
 
     def BITa(self):
-        v = self.accumulator & self.absolute()
-        self.processor_status = self.processor_status | (v & 0b01000000)
-        self.processor_status = self.processor_status | (v & 0b10000000)
+        v = self.absolute()
+        if v & 0b01000000 == 0b01000000:
+            self.processor_status = self.processor_status | 0b01000000
+        else:
+            self.processor_status = self.processor_status & 0b10111111
+        if v & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b10000000
+        else:
+            self.processor_status = self.processor_status & 0b01111111
+        if self.accumulator & v == 0:
+            self.processor_status = self.processor_status | 0b00000010
+        else:
+            self.processor_status = self.processor_status & 0b11111101
         self.program_counter += 2
+        self.cycle_count += 9
 
     def ANDa(self):
         self.accumulator = self.accumulator & Memory.memory[self.program_counter + 1]
@@ -273,7 +290,7 @@ class CPU:
         pass
 
     def BMId(self):
-        if self.processor_status & 0b10000000 != 0:
+        if self.processor_status & 0b10000000 == 0b10000000:
             self.branch()
         else:
             self.not_branch()
@@ -365,7 +382,7 @@ class CPU:
         pass
 
     def BVCd(self):
-        if self.processor_status & 0b01000000 == 0:
+        if self.processor_status & 0b01000000 == 0b00000000:
             self.branch()
         else:
             self.not_branch()
@@ -396,7 +413,7 @@ class CPU:
 
     def RTS(self):
         self.stack_pointer += 2
-        self.program_counter = ((Memory.memory[self.stack_pointer - 1] << 8) | Memory.memory[self.stack_pointer]) + 3
+        self.program_counter = ((Memory.memory[self.stack_pointer] << 8) | Memory.memory[self.stack_pointer - 1]) + 3
 
     def ADCdx(self):
         pass
@@ -415,15 +432,16 @@ class CPU:
 
     def PLA(self):
         self.accumulator = Memory.memory[self.stack_pointer]
-        self.A_zero_negative()
         self.stack_pointer += 1
+        self.A_zero_negative()
         self.program_counter += 1
 
     def ADCi(self):
-        self.accumulator += Memory.memory[self.program_counter + 1]
-        if self.accumulator >= 0xFF:
-            self.accumulator = self.accumulator >> 1
-            self.processor_status = self.processor_status | 0b00000001
+        self.accumulator += Memory.memory[self.program_counter + 1] + (self.processor_status & 0b00000001)
+        if self.accumulator & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b01000001
+        else:
+            self.processor_status = self.processor_status | 0b01000001
         self.A_zero_negative()
         self.program_counter += 2
 
@@ -450,7 +468,7 @@ class CPU:
         pass
 
     def BVSd(self):
-        if self.processor_status & 0b01000000 != 0:
+        if self.processor_status & 0b01000000 == 0b01000000:
             self.branch()
         else:
             self.not_branch()
@@ -539,7 +557,7 @@ class CPU:
         pass
 
     def BCCd(self):
-        if self.processor_status & 0b00000001 == 0:
+        if self.processor_status & 0b00000001 == 0b00000000:
             self.branch()
         else:
             self.not_branch()
@@ -658,7 +676,7 @@ class CPU:
         pass
 
     def BCSd(self):
-        if self.processor_status & 0b00000001 != 0:
+        if self.processor_status & 0b00000001 == 0b00000001:
             self.branch()
         else:
             self.not_branch()
@@ -676,7 +694,7 @@ class CPU:
         pass
 
     def CLV(self):
-        self.processor_status = self.processor_status and 0b10111111
+        self.processor_status = self.processor_status & 0b10111111
         self.program_counter += 1
 
     def LDAay(self):
@@ -731,16 +749,7 @@ class CPU:
         self.program_counter += 1
 
     def CMPi(self):
-        if self.accumulator > Memory.memory[self.program_counter + 1]:
-            self.processor_status = self.processor_status | 0b00000001
-        if self.accumulator == Memory.memory[self.program_counter + 1]:
-            self.processor_status = self.processor_status | 0b00000010
-        else:
-            self.processor_status = self.processor_status & 0b11111101
-        if (self.accumulator - Memory.memory[Memory.memory[self.program_counter + 1]]) & 0b10000000 == 0b10000000:
-            self.processor_status = self.processor_status | 0b10000000
-        else:
-            self.processor_status = self.processor_status & 0b01111111
+        self.compare(self.accumulator, self.program_counter + 1)
         self.program_counter += 2
 
     def DEX(self):
@@ -764,7 +773,7 @@ class CPU:
         pass
 
     def BNEd(self):
-        if (self.processor_status & 0b00000010) != 0:
+        if self.processor_status & 0b00000010 == 0b00000000:
             self.branch()
         else:
             self.not_branch()
@@ -780,7 +789,7 @@ class CPU:
 
     def CLD(self):
         self.processor_status = self.processor_status & 0b11110111
-        self.program_counter += 2
+        self.program_counter += 1
 
     def CMPay(self):
         pass
@@ -798,12 +807,7 @@ class CPU:
         pass
 
     def CPXi(self):
-        if self.x >= Memory.memory[self.program_counter + 1]:
-            self.processor_status = self.processor_status | 0b00000001
-        if self.x == Memory.memory[self.program_counter + 1]:
-            self.processor_status = self.processor_status | 0b00000010
-        self.processor_status = self.processor_status | (
-        (self.x - Memory.memory[Memory.memory[self.program_counter + 1]]) | 0b10000000)
+        self.compare(self.x, self.program_counter + 1)
         self.program_counter += 2
 
     def SBCdx(self):
@@ -851,7 +855,7 @@ class CPU:
         pass
 
     def BEQd(self):
-        if self.processor_status & 0b00000010 == 0b10:
+        if self.processor_status & 0b00000010 == 0b00000010:
             self.branch()
         else:
             self.not_branch()
