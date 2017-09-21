@@ -64,6 +64,8 @@ class CPU:
     def compare(self, register: object, address: object) -> object:
         if register >= Memory.memory[address]:
             self.processor_status = self.processor_status | 0b00000001
+        else:
+            self.processor_status = self.processor_status & 0b11111110
         if register == Memory.memory[address]:
             self.processor_status = self.processor_status | 0b00000010
         else:
@@ -437,11 +439,11 @@ class CPU:
         self.program_counter += 1
 
     def ADCi(self):
-        if (self.accumulator + Memory.memory[self.program_counter + 1]) & 0b10000000 == 0b10000000 and self.accumulator & 0b10000000 == 0 and Memory.memory[self.program_counter + 1] & 0b10000000 == 0b00000000:
+        if (self.accumulator + Memory.memory[self.program_counter + 1]) & 0b10000000 == 0b10000000 and self.accumulator & 0b10000000 == 0b00000000 and Memory.memory[self.program_counter + 1] & 0b10000000 == 0b00000000:
             self.processor_status = self.processor_status | 0b01000000
         else:
             self.processor_status = self.processor_status & 0b10111111
-        self.accumulator = self.accumulator + Memory.memory[self.program_counter + 1] + ((self.processor_status & 0b00000001) << 7)
+        self.accumulator = self.accumulator + Memory.memory[self.program_counter + 1] + (self.processor_status & 0b00000001)
         if self.accumulator > 0xFF:
             self.processor_status = self.processor_status | 0b00000001
         else:
@@ -841,9 +843,19 @@ class CPU:
         self.program_counter += 1
 
     def SBCi(self):
-        self.accumulator -= Memory.memory[self.program_counter + 1]
-        if self.accumulator < 0:
-            self.processor_status = self.processor_status | 0b00000010
+        if (self.accumulator - Memory.memory[self.program_counter + 1]) & 0b10000000 == 0b00000000 and self.accumulator & 0b10000000 == 0b10000000 and Memory.memory[self.program_counter + 1] & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status | 0b01000000
+        elif (self.accumulator - Memory.memory[self.program_counter + 1] - (1 - (self.processor_status & 0b00000001))) & 0b10000000 == 0b10000000 and self.accumulator & 0b10000000 == 0b00000000 and Memory.memory[self.program_counter + 1] & 0b10000000 == 0b00000000:
+            self.processor_status = self.processor_status | 0b01000000
+        else:
+            self.processor_status = self.processor_status & 0b10111111
+        self.accumulator = self.accumulator - Memory.memory[self.program_counter + 1] - (1 - (self.processor_status & 0b00000001))
+        print(bin(self.accumulator))
+        if self.accumulator & 0b10000000 == 0b10000000:
+            self.processor_status = self.processor_status & 0b11111110
+        else:
+            self.processor_status = self.processor_status | 0b00000001
+        self.accumulator = self.accumulator & 0x00FF
         self.A_zero_negative()
         self.program_counter += 2
 
