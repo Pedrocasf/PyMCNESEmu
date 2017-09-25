@@ -2,3 +2,4 @@ __pycache__/
 .idea/
 binaries/
 snake
+snake log.log
