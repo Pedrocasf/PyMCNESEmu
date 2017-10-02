@@ -6,7 +6,7 @@ class Memory:
             self.memory[i] = 0
 
     def load_data(self, data, offset, banks, offset_data):
-        for i in range(0, banks):
+        for i in range(0, bank):
             self.memory[i + offset] = data[i + offset_data]
 
     def write_to_address(self, data, address ):

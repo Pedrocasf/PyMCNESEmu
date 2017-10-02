@@ -28,7 +28,7 @@ def cycle():
 
 print(" %s" % hex(cpu.program_counter)[2:].upper().zfill(4) + " %s" % cpu.opcode_table[mem.memory[cpu.program_counter]].__name__ + " A: %s" % (hex(cpu.accumulator)[2:].upper()).zfill(2) + " X: %s" % (hex(cpu.x)[2:].upper()).zfill(2) + " Y: %s" % (hex(cpu.y)[2:].upper()).zfill(2) + " P: %s " % hex(cpu.processor_status)[2:].upper() + "SP: %s " % hex((cpu.stack_pointer - 0x100))[2:].upper().zfill(2) + " P(bin):%s" % (bin(cpu.processor_status)[2:]).zfill(8) + " CYC: 0")
 
-for i in range(9000):
+for i in range(8990):
     cycle()
     if cpu.opcode_table[mem.memory[cpu.program_counter]].__name__ == "BRK":
         break
