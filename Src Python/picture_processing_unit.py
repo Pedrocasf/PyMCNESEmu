@@ -1,7 +1,9 @@
-import pyglet
-import threading
+import pyglet , logging
+import threading, datetime
 from pyglet.gl import *
 from memory import Memory
+import datetime, threading, time
+logging.basicConfig(level=logging.DEBUG)
 
 
 class PPU:
@@ -21,5 +23,8 @@ class PPU:
         self.PPUDATA = Memory.memory[0x2007]
         self.OAMDMA = Memory.memory[0x4014]
 
+    
     def V_blank(self):
-        print("V_blank")
+        threading.Timer((1/60), self.V_blank).start()
+        logging.debug("V_blank")
+        

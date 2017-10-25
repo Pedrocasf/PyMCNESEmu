@@ -1,15 +1,15 @@
-import sys
-from numba import jit
-from threading import Thread
+import sys, logging
+from multiprocessing import Process
 from memory import Memory
 from central_processing_unit import CPU
 from picture_processing_unit import PPU
 from audio_processing_unit import APU
 mem = Memory()
+logging.basicConfig(level=logging.DEBUG)
 
 
 def initialize():
-    with open(sys.argv[1], mode="rb") as f:
+    with open("nestest.nes", mode="rb") as f:
         data = f.read()
     mapper = ((data[0x6] & 0b11110000) >> 4) | (data[0x7] & 0b11110000)
     mem.load_data(data, mapper, 0x4000)
@@ -18,9 +18,6 @@ cpu = CPU()
 ppu = PPU()
 apu = APU()
 cpu.program_counter = ((mem.memory[0xFFFD] << 8) + mem.memory[0xFFFC])
-
-
-
 
 def PPU_cycle():
     while True:
@@ -40,17 +37,20 @@ def APU_cycle():
 
 
 def cycle():
-    for i in range(8991):
+    logging.debug(time.time())
+    for i in range(1789773):
         cpu.opcode_table[mem.memory[cpu.program_counter]]()
-
-
-t_cpu = Thread(target=cycle)
-t_ppu = Thread(target=PPU_cycle)
-t_apu = Thread(target=APU_cycle)
-t_ppu.setDaemon(True)
-t_apu.setDaemon(True)
-t_cpu.start()
-t_ppu.start()
-t_apu.start()
-ppu.V_blank()
-print(mem.memory[0x210], mem.memory[3])
+    logging.debug(time.time())
+    sys.exit()
+    
+if __name__ == '__main__':
+    p_cpu = Process(target=cycle)
+    p_ppu = Process(target=PPU_cycle)
+    p_apu = Process(target=APU_cycle)
+    p_cpu.start()
+    p_ppu.start()
+    p_apu.start()
+    p_cpu.join()
+    p_ppu.join()
+    p_apu.join()
+    ppu.V_blank()
