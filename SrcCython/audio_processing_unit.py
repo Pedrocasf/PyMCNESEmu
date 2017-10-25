@@ -1,3 +1,3 @@
-class PPU:
+class APU:
     def cycle(self):
         pass
