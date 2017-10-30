@@ -16,12 +16,14 @@ class Memory(Exception):
                     for i in range(0, 0x4000):
                         self.memory[i + 0x8000] = data[i + 0x10]
                     for i in range(0, 0x2000):
-                        self.ppu_memory[i] = data[i + 0x4000]
+                        self.ppu_memory[i] = data[i + 0x4010]
                 elif data[0x4] == 0x2:
                     for i in range(0, 0x4000):
                         self.memory[i + 0x8000] = data[i + 0x10]
                     for i in range(0, 0x4000):
                         self.memory[i + 0xc000] = data[i + 0x4000]
+                    for i in range(0, 0x2000):
+                        self.ppu_memory[i] = data[i + 0x8000]
             else:
                 print("mapper not implemented")
         else:

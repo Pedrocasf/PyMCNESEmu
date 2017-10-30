@@ -1,18 +1,33 @@
-import pyglet , logging
-import threading, datetime
-from pyglet.gl import *
+import numpy as np
+import pygame, itertools, sched, time
+from central_processing_unit import CPU
 from memory import Memory
-import datetime, threading, time
-logging.basicConfig(level=logging.DEBUG)
+np.set_printoptions(threshold=np.nan)
+cpu = CPU()
 
-
-class PPU:
-    window = pyglet.window.Window()
-    context = window.context
-    config = window.config
-
+class PPU():
+    palletes = [(0x66, 0x66, 0x66), (0x00, 0x2a, 0x88), (0x14, 0x12, 0xa7), (0x3b, 0x00, 0xa4),
+    (0x5c, 0x00, 0x7e), (0x6e, 0x00, 0x40), (0x6c, 0x06, 0x00), (0x56, 0x1d, 0x00),
+    (0x33, 0x35, 0x00), (0x0b, 0x48, 0x00), (0x00, 0x52, 0x00), (0x00, 0x4f, 0x08),
+    (0x00, 0x40, 0x4d), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00),
+    (0xad, 0xad, 0xad), (0x15, 0x5f, 0xd9), (0x42, 0x40, 0xff), (0x75, 0x27, 0xfe),
+    (0xa0, 0x1a, 0xcc), (0xb7, 0x1e, 0x7b), (0xb5, 0x31, 0x20), (0x99, 0x4e, 0x00),
+    (0x6b, 0x6d, 0x00), (0x38, 0x87, 0x00), (0x0c, 0x93, 0x00), (0x00, 0x8f, 0x32),
+    (0x00, 0x7c, 0x8d), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00),
+    (0xff, 0xfe, 0xff), (0x64, 0xb0, 0xff), (0x92, 0x90, 0xff), (0xc6, 0x76, 0xff),
+    (0xf3, 0x6a, 0xff), (0xfe, 0x6e, 0xcc), (0xfe, 0x81, 0x70), (0xea, 0x9e, 0x22),
+    (0xbc, 0xbe, 0x00), (0x88, 0xd8, 0x00), (0x5c, 0xe4, 0x30), (0x45, 0xe0, 0x82),
+    (0x48, 0xcd, 0xde), (0x4f, 0x4f, 0x4f), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00),
+    (0xff, 0xfe, 0xff), (0xc0, 0xdf, 0xff), (0xd3, 0xd2, 0xff), (0xe8, 0xc8, 0xff),
+    (0xfb, 0xc2, 0xff), (0xfe, 0xc4, 0xea), (0xfe, 0xcc, 0xc5), (0xf7, 0xd8, 0xa5),
+    (0xe4, 0xe5, 0x94), (0xcf, 0xef, 0x96), (0xbd, 0xf4, 0xab), (0xb3, 0xf3, 0xcc),
+    (0xb5, 0xeb, 0xf2), (0xb8, 0xb8, 0xb8), (0x00, 0x00, 0x00), (0x00, 0x00, 0x00)]
 
     def __init__(self):
+        self.pattern_table_screen = pygame.display.set_mode((1024, 480))
+        self.final_screen = pygame.display.set_mode((1024, 960))
+        self.pattern_table_left = np.zeros((16, 8, 16, 8))
+        self.pattern_table_right = np.zeros((16, 8, 16, 8))
         self.PPUCTRL = Memory.memory[0x2000]
         self.PPUMASK = Memory.memory[0x2001]
         self.PPUSTATUS = Memory.memory[0x2002]
@@ -23,8 +38,32 @@ class PPU:
         self.PPUDATA = Memory.memory[0x2007]
         self.OAMDMA = Memory.memory[0x4014]
 
-    
-    def V_blank(self):
-        threading.Timer((1/60), self.V_blank).start()
-        logging.debug("V_blank")
-        
+    def DMA(self):
+        self.OAMDMA_old = self.OAMDMA
+        for i in range(0xFF):
+            Memory.object_attribute_memory[i] = Memory.memory[(self.OAMDMA << 8) + i]
+        print(Memory.object_attribute_memory)
+
+    def decode(self):
+        for w, x, y, z in itertools.product(*map(range, (16, 8, 16, 8))):
+            self.pattern_table_left[w, x, y, z] = (((int(Memory.ppu_memory[x + (16 * y) + (w * 256)]) << z) & 0b000000010000000) >> 7) + (((int(Memory.ppu_memory[(x + 8) + (y * 16) + (w * 256)]) << z) & 0b0000000010000000) >> 6)
+            self.pattern_table_right[w, x, y, z] = (((int(Memory.ppu_memory[0x1000 + x + (16 * y) + (w * 256)]) << z) & 0b0000000010000000) >> 7) + (((int(Memory.ppu_memory[0x1000 + (x + 8) + (y * 16) + (w * 256)]) << z) & 0b0000000010000000) >> 6)
+        self.pattern_table_left = np.fliplr(np.rot90(((self.pattern_table_left.astype(int).reshape(128, 8*16)) * 85), 3))
+        self.pattern_table_right = np.fliplr(np.rot90(((self.pattern_table_right.astype(int).reshape(128, 8*16)) * 85), 3))
+
+    def render_frame(self):
+        for i in range(33):
+            x = ((Memory.ppu_memory[i+0x2000]) & 0x0F)
+            y = ((Memory.ppu_memory[i+0x2000]) & 0xF0)
+            if self.PPUCTRL & 0b00010000 == 0b00010000:
+                surface = (self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8])
+                print(surface)
+                surface = pygame.pixelcopy.make_surface(surface)
+                self.final_screen.blit(surface, (x * 64, y * 64))
+            else:
+                surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
+                print(surface)
+                surface = pygame.pixelcopy.make_surface(surface)
+                surface = pygame.transform.scale(surface, (64, 64))
+                self.final_screen.blit(surface, (x * 64, y * 64))
+        pygame.display.update()

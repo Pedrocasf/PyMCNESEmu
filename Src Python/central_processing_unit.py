@@ -10,8 +10,10 @@ class CPU():
     cycle_count = 0
     processor_status = 0b00100100
 
-    # misc functions
+    # misc functions & interrupts
 
+    def NMI(self):
+        self.program_counter = ((Memory.memory[0XFFFB] << 8) | Memory.memory[0XFFFA])
 
     def value_zero_negative(self, value):
         if value == 0:
