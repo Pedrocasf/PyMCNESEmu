@@ -1,11 +1,10 @@
 import numpy as np
 import pygame, itertools, sched, time
-from central_processing_unit import CPU
 from memory import Memory
+from Singleton import Singleton
 np.set_printoptions(threshold=np.nan)
-cpu = CPU()
 
-class PPU():
+class PPU(metaclass= Singleton):
     palletes = [(0x66, 0x66, 0x66), (0x00, 0x2a, 0x88), (0x14, 0x12, 0xa7), (0x3b, 0x00, 0xa4),
     (0x5c, 0x00, 0x7e), (0x6e, 0x00, 0x40), (0x6c, 0x06, 0x00), (0x56, 0x1d, 0x00),
     (0x33, 0x35, 0x00), (0x0b, 0x48, 0x00), (0x00, 0x52, 0x00), (0x00, 0x4f, 0x08),
@@ -37,6 +36,60 @@ class PPU():
         self.PPUADDR = Memory.memory[0x2006]
         self.PPUDATA = Memory.memory[0x2007]
         self.OAMDMA = Memory.memory[0x4014]
+        self.address = 0x2000
+        self.bit = "low"
+
+    def read(self, address):
+        if 0x1FFF < address < 0x2008 or 0x3FFF < address < 0x4018:
+            if address == 0x2000:
+                Memory.memory[address] = self.PPUCTRL
+            elif address == 0x2001:
+                Memory.memory[address] = self.PPUMASK
+            elif address == 0x2002:
+                Memory.memory[address] = self.PPUSTATUS
+            elif address == 0x2003:
+                Memory.memory[address] = self.OAMADDR
+            elif address == 0x2004:
+                Memory.memory[address] = self.OAMDATA
+            elif address == 0x2005:
+                Memory.memory[address] = self.PPUSCROLL
+            elif address == 0x2006:
+                Memory.memory[address] = self.PPUADDR
+            elif address == 0x2007:
+                Memory.memory[address] = self.PPUDATA
+
+    def write(self, address, result):
+        if 0x1FFF < address < 0x2008 or 0x3FFF < address < 0x4018:
+            if address == 0x2000:
+                self.PPUCTRL = result
+            elif address == 0x2001:
+                self.PPUMASK = result
+            elif address == 0x2002:
+                pass
+            elif address == 0x2003:
+                self.OAMADDR = result
+            elif address == 0x2004:
+                self.OAMDATA = result
+            elif address == 0x2005:
+                self.PPUSCROLL = result
+            elif address == 0x2006:
+                if self.bit == "low":
+                    self.PPUADDR = result
+                    self.address = self.PPUADDR
+                    self.bit = "high"
+                elif self.bit == "high":
+                    self.address = self.PPUADDR << 8
+                    self.bit = "low"
+            elif address == 0x2007:
+                self.PPUDATA = result
+                Memory.ppu_memory[self.address] = self.PPUDATA
+                self.address += (((self.PPUCTRL & 0b00000100) >> 2) * 31) + 1
+        else:
+            Memory.memory[address] = result
+
+    def ppu_write(self):
+        Memory.ppu_memory[self.address] = self.PPUDATA
+        self.address += (((self.PPUCTRL & 0b00000100) >> 2) * 31) + 1
 
     def DMA(self):
         self.OAMDMA_old = self.OAMDMA
@@ -52,18 +105,25 @@ class PPU():
         self.pattern_table_right = np.fliplr(np.rot90(((self.pattern_table_right.astype(int).reshape(128, 8*16)) * 85), 3))
 
     def render_frame(self):
+        base_nametable_address = ((self.PPUCTRL & 0b00000011) * 0x400) + 0x2000
         for i in range(33):
-            x = ((Memory.ppu_memory[i+0x2000]) & 0x0F)
-            y = ((Memory.ppu_memory[i+0x2000]) & 0xF0)
+            x = ((Memory.ppu_memory[i+base_nametable_address]) & 0x0F)
+            y = ((Memory.ppu_memory[i+base_nametable_address]) & 0xF0)
             if self.PPUCTRL & 0b00010000 == 0b00010000:
                 surface = (self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8])
-                print(surface)
                 surface = pygame.pixelcopy.make_surface(surface)
+                surface = pygame.transform.scale(surface, (64, 64))
                 self.final_screen.blit(surface, (x * 64, y * 64))
             else:
                 surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
-                print(surface)
                 surface = pygame.pixelcopy.make_surface(surface)
                 surface = pygame.transform.scale(surface, (64, 64))
                 self.final_screen.blit(surface, (x * 64, y * 64))
         pygame.display.update()
+        self.PPUSTATUS &= 0b11011111
+
+    def enter_VBlank(self):
+        self.PPUSTATUS = self.PPUSTATUS | 0b10000000
+
+    def sprite_evaluation(self):
+        self.PPUSTATUS |= 0b00100000
