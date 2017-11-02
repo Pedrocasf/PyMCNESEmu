@@ -4,7 +4,7 @@ from memory import Memory
 from Singleton import Singleton
 np.set_printoptions(threshold=np.nan)
 
-class PPU(metaclass= Singleton):
+class PPU(metaclass=Singleton):
     palletes = [(0x66, 0x66, 0x66), (0x00, 0x2a, 0x88), (0x14, 0x12, 0xa7), (0x3b, 0x00, 0xa4),
     (0x5c, 0x00, 0x7e), (0x6e, 0x00, 0x40), (0x6c, 0x06, 0x00), (0x56, 0x1d, 0x00),
     (0x33, 0x35, 0x00), (0x0b, 0x48, 0x00), (0x00, 0x52, 0x00), (0x00, 0x4f, 0x08),
@@ -38,6 +38,8 @@ class PPU(metaclass= Singleton):
         self.OAMDMA = Memory.memory[0x4014]
         self.address = 0x2000
         self.bit = "low"
+        self.nmi_to_happen = True
+        self.show_tiles = False
 
     def read(self, address):
         if 0x1FFF < address < 0x2008 or 0x3FFF < address < 0x4018:
@@ -78,7 +80,7 @@ class PPU(metaclass= Singleton):
                     self.address = self.PPUADDR
                     self.bit = "high"
                 elif self.bit == "high":
-                    self.address = self.PPUADDR << 8
+                    self.address += self.PPUADDR << 8
                     self.bit = "low"
             elif address == 0x2007:
                 self.PPUDATA = result
@@ -103,24 +105,37 @@ class PPU(metaclass= Singleton):
             self.pattern_table_right[w, x, y, z] = (((int(Memory.ppu_memory[0x1000 + x + (16 * y) + (w * 256)]) << z) & 0b0000000010000000) >> 7) + (((int(Memory.ppu_memory[0x1000 + (x + 8) + (y * 16) + (w * 256)]) << z) & 0b0000000010000000) >> 6)
         self.pattern_table_left = np.fliplr(np.rot90(((self.pattern_table_left.astype(int).reshape(128, 8*16)) * 85), 3))
         self.pattern_table_right = np.fliplr(np.rot90(((self.pattern_table_right.astype(int).reshape(128, 8*16)) * 85), 3))
+        if self.show_tiles:
+            surface = self.pattern_table_left
+            surface = pygame.pixelcopy.make_surface(surface)
+            surface = pygame.transform.scale(surface, (512, 512))
+            self.final_screen.blit(surface, (0, 0))
+            surface = self.pattern_table_right
+            surface = pygame.pixelcopy.make_surface(surface)
+            surface = pygame.transform.scale(surface, (512, 512))
+            self.final_screen.blit(surface, (512, 0))
+            pygame.display.update()
+
 
     def render_frame(self):
-        base_nametable_address = ((self.PPUCTRL & 0b00000011) * 0x400) + 0x2000
-        for i in range(33):
-            x = ((Memory.ppu_memory[i+base_nametable_address]) & 0x0F)
-            y = ((Memory.ppu_memory[i+base_nametable_address]) & 0xF0)
-            if self.PPUCTRL & 0b00010000 == 0b00010000:
-                surface = (self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8])
-                surface = pygame.pixelcopy.make_surface(surface)
-                surface = pygame.transform.scale(surface, (64, 64))
-                self.final_screen.blit(surface, (x * 64, y * 64))
-            else:
-                surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
-                surface = pygame.pixelcopy.make_surface(surface)
-                surface = pygame.transform.scale(surface, (64, 64))
-                self.final_screen.blit(surface, (x * 64, y * 64))
-        pygame.display.update()
-        self.PPUSTATUS &= 0b11011111
+        if not self.show_tiles:
+            self.PPUSTATUS = self.PPUSTATUS & 0b011111111
+            base_nametable_address = ((self.PPUCTRL & 0b00000011) * 0x400) + 0x2000
+            for i in range(33):
+                x = ((Memory.ppu_memory[i+base_nametable_address]) & 0x0F)
+                y = ((Memory.ppu_memory[i+base_nametable_address]) & 0xF0)
+                if self.PPUCTRL & 0b00010000 == 0b00010000:
+                    surface = (self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8])
+                    surface = pygame.pixelcopy.make_surface(surface)
+                    surface = pygame.transform.scale(surface, (64, 64))
+                    self.final_screen.blit(surface, (x * 64, y * 64))
+                else:
+                    surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
+                    surface = pygame.pixelcopy.make_surface(surface)
+                    surface = pygame.transform.scale(surface, (64, 64))
+                    self.final_screen.blit(surface, (x * 64, y * 64))
+            pygame.display.update()
+            self.PPUSTATUS &= 0b11011111
 
     def enter_VBlank(self):
         self.PPUSTATUS = self.PPUSTATUS | 0b10000000
