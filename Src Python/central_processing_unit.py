@@ -15,7 +15,26 @@ class CPU(metaclass=Singleton):
     processor_status = 0b00100100
 
     # misc functions & interrupts
-
+    def Reset(self):
+        self.cycles_left -= 21
+        sub_routine = self.program_counter + 1
+        Memory.memory[self.stack_pointer] = (sub_routine & 0xFF00) >> 8
+        Memory.memory[self.stack_pointer - 1] = (sub_routine & 0x00FF)
+        self.stack_pointer -= 2
+        Memory.memory[self.stack_pointer] = self.processor_status
+        self.stack_pointer -= 1
+        self.program_counter = ((Memory.memory[0XFFFD] << 8) | Memory.memory[0XFFFC])
+        
+    def IRQ(self):
+        self.cycles_left -= 21
+        sub_routine = self.program_counter + 1
+        Memory.memory[self.stack_pointer] = (sub_routine & 0xFF00) >> 8
+        Memory.memory[self.stack_pointer - 1] = (sub_routine & 0x00FF)
+        self.stack_pointer -= 2
+        Memory.memory[self.stack_pointer] = self.processor_status
+        self.stack_pointer -= 1
+        self.program_counter = ((Memory.memory[0XFFFF] << 8) | Memory.memory[0XFFF])
+        
     def NMI(self):
         self.cycles_left -= 21
         sub_routine = self.program_counter + 1
@@ -209,9 +228,7 @@ class CPU(metaclass=Singleton):
             self.program_counter += 2
 
     def BRK(self):
-        self.cycles_left -= 21
-        self.program_counter = ((Memory.memory[0XFFFF] << 8) | Memory.memory[0XFFFE])
-        self.processor_status = self.processor_status | 0b00110100
+        self.IRQ()
 
     def BVC(self):
         self.cycles_left -= 6

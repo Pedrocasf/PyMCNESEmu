@@ -1,11 +1,11 @@
 from Singleton import Singleton
+
+
 class Memory(metaclass=Singleton):
-    __metaclass__ = Singleton
     memory = bytearray(0x10000)
     ppu_memory = bytearray(0x10000)
     object_attribute_memory = bytearray(0x100)
-    bit = "low"
-
+      
     def __init__(self):
         for i in range(len(self.memory)):
             self.memory[i] = 0
