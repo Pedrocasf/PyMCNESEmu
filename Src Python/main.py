@@ -1,10 +1,11 @@
-import threading, time, sys
+import threading, time, sys, pygame
 sys.setrecursionlimit(2147483647)
 from memory import Memory
 from central_processing_unit import CPU
 from picture_processing_unit import PPU
 from audio_processing_unit import APU
 mem = Memory()
+
 
 def initialize():
     with open(sys.argv[1], mode="rb") as f:
@@ -19,6 +20,28 @@ ppu = PPU()
 apu = APU()
 cpu.Reset()
 ppu.decode()
+
+def test_input():
+	events = pygame.event.get()
+	for event in events:
+		if event.type == pygame.KEYDOWN:			
+			if event.key == pygame.K_a:
+				ppu.JOY1 |= 0b10000000 
+			elif event.key == pygame.K_b:
+				ppu.JOY1 |= 0b01000000 
+			elif event.key == pygame.K_LCTRL:
+				ppu.JOY1 |= 0b00100000 
+			elif event.key == pygame.K_RCTRL:
+				ppu.JOY1 |= 0b00010000 
+			elif event.key == pygame.K_UP:
+				ppu.JOY1 |= 0b00001000 
+			elif event.key == pygame.K_DOWN:
+				ppu.JOY1 |= 0b00000100 
+			elif event.key == pygame.K_LEFT:
+				ppu.JOY1 |= 0b00000010 
+			elif event.key ==  pygame.K_RIGHT:
+				ppu.JOY1 |= 0b00000001
+				print(ppu.JOY1)
 
         
 def cycle():

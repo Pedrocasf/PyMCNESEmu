@@ -1,0 +1,11 @@
+__pycache__/
+
+.idea/
+
+binaries/
+build/
+
+snake
+snake log.log
+
+*.nes

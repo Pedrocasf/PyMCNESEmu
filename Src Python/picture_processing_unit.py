@@ -60,8 +60,6 @@ class PPU(metaclass=Singleton):
         self.address = 0x2000
         self.bit = "high"
         self.nmi_to_happen = True
-        self.show_tiles = False
-        self.clock  = pygame.time.Clock()
 
     def read(self, address):
         if 0x1FFF < address < 0x4000:
@@ -219,36 +217,35 @@ class PPU(metaclass=Singleton):
         self.pattern_table_right = np.fliplr(np.rot90(((self.pattern_table_right.astype(int).reshape(128, 8*16)) * 85), 3))
 
     def render_frame(self):
-            self.PPUSTATUS = self.PPUSTATUS & 0b011111111
-            base_nametable_address = (((self.PPUCTRL & 0b00000011) * 0x400) + 0x2000)
-            for i in range(960):
-                x = ((Memory.ppu_memory[i+base_nametable_address]) & 0x0F)
-                y = ((Memory.ppu_memory[i+base_nametable_address]) & 0xF0) >> 4
-                if self.PPUCTRL & 0b00010000 == 0b00010000:
-                    surface = self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
-                    surface = pygame.pixelcopy.make_surface(surface)
-                    self.final_screen.blit(surface, ((i%32)*8, (i//32)*8))
-                else:
-                    surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
-                    surface = pygame.pixelcopy.make_surface(surface)
-                    self.final_screen.blit(surface, ((i%32)*8, (i//32)*8))
-            self.PPUSTATUS &= 0b11011111 
-            for i in range(64):
-                byte_0 = Memory.object_attribute_memory[i*4]
-                byte_1 = Memory.object_attribute_memory[(i*4)+1]
-                byte_2 = Memory.object_attribute_memory[(i*4)+2]
-                byte_3 = Memory.object_attribute_memory[(i*4)+3]
-                sprite_x = (byte_1 & 0xFF) >>4
-                sprite_y = byte_1 & 0x0FF 
-                if self.PPUCTRL & 0b00010000 == 0b00010000:
-                    sprite = self.pattern_table_right[sprite_x * 8:(sprite_x * 8) + 8, sprite_y * 8:(sprite_y * 8) + 8]
-                    sprite = pygame.pixelcopy.make_surface(sprite)
-                    self.final_screen.blit(surface, (byte_3, byte_0))
-                else:
-                    surface = self.pattern_table_left[sprite_x * 8:(sprite_x * 8) + 8, sprite_y * 8:(sprite_y * 8) + 8]
-                    surface = pygame.pixelcopy.make_surface(surface)
-                    self.final_screen.blit(surface, (byte_3, byte_0))
-            pygame.display.update()
+        self.PPUSTATUS = self.PPUSTATUS & 0b011111111
+        base_nametable_address = (((self.PPUCTRL & 0b00000011) * 0x400) + 0x2000)
+        for i in range(960):
+            x = ((Memory.ppu_memory[i+base_nametable_address]) & 0x0F)
+            y = ((Memory.ppu_memory[i+base_nametable_address]) & 0xF0) >> 4
+            if self.PPUCTRL & 0b00010000 == 0b00010000:
+                surface = self.pattern_table_right[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
+                surface = pygame.pixelcopy.make_surface(surface)
+                self.final_screen.blit(surface, ((i%32)*8, (i//32)*8))
+            else:
+                surface = self.pattern_table_left[x * 8:(x * 8) + 8, y * 8:(y * 8) + 8]
+                surface = pygame.pixelcopy.make_surface(surface)
+                self.final_screen.blit(surface, ((i%32)*8, (i//32)*8))
+        self.PPUSTATUS &= 0b11011111 
+        for i in range(64):
+            byte_0 = Memory.object_attribute_memory[i*4]
+            byte_1 = Memory.object_attribute_memory[(i*4)+1]
+            byte_3 = Memory.object_attribute_memory[(i*4)+3]
+            sprite_x = byte_1 & 0x0F
+            sprite_y = (byte_1 & 0xF0) >>4 
+            if self.PPUCTRL & 0b00010000 == 0b00000000:
+                sprite = self.pattern_table_right[sprite_x * 8:(sprite_x * 8) + 8, sprite_y * 8:(sprite_y * 8) + 8]
+                sprite = pygame.pixelcopy.make_surface(sprite)
+                self.final_screen.blit(sprite, (byte_3, byte_0))
+            else:
+                sprite = self.pattern_table_left[(sprite_x * 8):(sprite_x * 8) + 8, sprite_y * 8:(sprite_y * 8) + 8]
+                sprite = pygame.pixelcopy.make_surface(sprite)
+                self.final_screen.blit(sprite, (byte_3, byte_0))
+        pygame.display.update()
 
     def enter_VBlank(self):
         self.PPUSTATUS = self.PPUSTATUS | 0b10000000
